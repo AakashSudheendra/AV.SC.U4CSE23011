@@ -485,6 +485,104 @@ This query:
 - returns unique student IDs
 
 
+---
 
+# Stage 4
+
+When notifications are fetched on every page load for every student, the database receives a very large number of repeated requests. As the number of users increases, this can overload the DB and reduce performance.
+
+To improve performance and reduce database load, multiple optimizations can be used.
+
+---
+
+## 1. Pagination
+
+Instead of loading all notifications at once, notifications can be fetched in smaller batches.
+
+Example:
+
+```http
+GET /api/v1/notifications?page=1&limit=20
+```
+
+### Advantages
+- reduces response size
+- reduces DB load
+- faster API responses
+
+### Tradeoff
+- frontend needs pagination handling
+
+---
+
+## 2. Caching
+
+Frequently accessed notifications can be cached using Redis.
+
+Instead of querying the database repeatedly, recent notifications can be served directly from cache.
+
+### Advantages
+- very fast response time
+- reduces repeated DB queries
+- improves scalability
+
+### Tradeoff
+- cache invalidation must be handled properly
+- extra memory usage
+
+---
+
+## 3. Real-Time Notifications
+
+Instead of fetching notifications repeatedly using API polling, WebSockets can be used for real-time updates.
+
+The server pushes new notifications directly to connected users.
+
+### Advantages
+- reduces unnecessary API calls
+- real-time user experience
+- lower database traffic
+
+### Tradeoff
+- more complex connection management
+- persistent socket connections required
+
+---
+
+## 4. Database Indexing
+
+Indexes on commonly filtered fields such as userId, isRead, and createdAt can improve query speed.
+
+### Advantages
+- faster searching and sorting
+
+### Tradeoff
+- slightly slower insert/update operations
+- additional storage required
+
+---
+
+## 5. Archiving Old Notifications
+
+Old notifications can be moved to archive collections or tables.
+
+### Advantages
+- reduces active database size
+- improves performance for recent data
+
+### Tradeoff
+- archived data retrieval becomes slower
+
+---
+
+## Recommended Approach
+
+A combination of:
+- pagination
+- Redis caching
+- WebSockets
+- proper indexing
+
+would provide better scalability and improved user experience for the notification platform.
 
 
