@@ -1,17 +1,21 @@
-# Stage 1
+# Notification System Design
 
-## Notification System API Design
+---
 
-A notification service is required for students to receive updates related to placements, events, and results after logging into the platform.
+# Stage 1 — API Design
 
-The system should support:
+## Overview
 
-- viewing notifications
-- viewing a single notification
-- creating notifications
-- marking notifications as read
-- deleting notifications
-- receiving real-time updates
+The goal here is to build a notification service that keeps students informed about placement updates, upcoming events, and results — all accessible right after they log into the platform.
+
+The system needs to handle the following core operations:
+
+- Viewing all notifications
+- Viewing a single notification in detail
+- Creating new notifications
+- Marking a notification as read
+- Deleting a notification
+- Delivering real-time updates without requiring a page refresh
 
 ---
 
@@ -42,6 +46,8 @@ Content-Type: application/json
 
 ## Notification Object
 
+Each notification follows this structure:
+
 ```json
 {
   "id": "notif_101",
@@ -56,9 +62,11 @@ Content-Type: application/json
 
 ---
 
-# APIs
+# API Endpoints
 
 ## 1. Get All Notifications
+
+Fetches the full list of notifications for the authenticated user.
 
 ### Endpoint
 
@@ -92,6 +100,8 @@ GET /api/v1/notifications
 
 ## 2. Get Notification By ID
 
+Retrieves a specific notification using its unique ID.
+
 ### Endpoint
 
 ```http
@@ -123,6 +133,8 @@ GET /api/v1/notifications/notif_101
 
 ## 3. Create Notification
 
+Creates a new notification for a specific user.
+
 ### Endpoint
 
 ```http
@@ -153,6 +165,8 @@ POST /api/v1/notifications
 
 ## 4. Mark Notification as Read
 
+Updates the read status of a notification once the user has viewed it.
+
 ### Endpoint
 
 ```http
@@ -171,6 +185,8 @@ PATCH /api/v1/notifications/:id/read
 ---
 
 ## 5. Delete Notification
+
+Removes a notification permanently.
 
 ### Endpoint
 
@@ -191,6 +207,8 @@ DELETE /api/v1/notifications/:id
 
 ## Error Response
 
+When something goes wrong (e.g., a notification doesn't exist):
+
 ```json
 {
   "success": false,
@@ -202,11 +220,11 @@ DELETE /api/v1/notifications/:id
 
 # Real-Time Notifications
 
-For real-time notification delivery, WebSockets can be used so users receive updates instantly without refreshing the application.
+For instant delivery, the system uses WebSockets. This means users receive new notifications the moment they arrive — no polling, no manual refresh.
 
 ### WebSocket Endpoint
 
-```txt
+```
 ws://localhost:3000/notifications
 ```
 
@@ -225,13 +243,13 @@ ws://localhost:3000/notifications
 
 ---
 
-## Notes
+## Design Notes
 
-- REST naming conventions are followed
-- JWT token can be used for authentication
-- API versioning is included
-- JSON response format is kept consistent
-- WebSockets are used for real-time updates
+- REST naming conventions are followed throughout
+- JWT tokens are used for authentication and authorization
+- API versioning (`/v1`) is included to support future changes
+- All responses use a consistent JSON format
+- WebSockets handle real-time notification delivery
 
 ---
 
