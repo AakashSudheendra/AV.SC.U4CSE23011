@@ -253,19 +253,22 @@ ws://localhost:3000/notifications
 
 ---
 
-# Stage 2
 
-## Database Choice
 
-MongoDB can be used for storing notifications because notification data is flexible and generated frequently in large volumes.
 
-Advantages of MongoDB:
+# Stage 2 — Database Design
 
-- schema flexibility
-- faster development
-- suitable for high-volume notification systems
-- easy to scale horizontally
-- stores JSON-like documents
+## Why MongoDB?
+
+MongoDB is a natural fit for a notification system. Notification data tends to be flexible in structure, generated in high volumes, and doesn't always require strict relational constraints — all areas where MongoDB excels.
+
+Key reasons for choosing MongoDB:
+
+- **Schema flexibility** — notifications can carry different fields depending on type (placement, event, result) without requiring schema migrations
+- **Faster development** — document-based storage maps directly to how notification data is structured in the application
+- **High-volume support** — designed to handle large amounts of write-heavy data efficiently
+- **Horizontal scalability** — scales out easily as user count and data volume grow
+- **JSON-like documents** — data can be stored and retrieved without complex transformations
 
 ---
 
@@ -285,45 +288,36 @@ Advantages of MongoDB:
 
 ---
 
-## Indexing
+## Indexing Strategy
 
-Indexes can improve query performance.
+To keep queries fast as the collection grows, the following indexes are created:
 
 ```javascript
 db.notifications.createIndex({ userId: 1 });
-
 db.notifications.createIndex({ createdAt: -1 });
 ```
+
+These ensure that fetching notifications for a specific user and sorting by time remain efficient operations.
 
 ---
 
 ## Example Queries
 
-### 1. Get All Notifications
+### 1. Get All Notifications for a User
 
 ```javascript
 db.notifications
-  .find({
-    userId: "user_1001",
-  })
-  .sort({
-    createdAt: -1,
-  });
+  .find({ userId: "user_1001" })
+  .sort({ createdAt: -1 });
 ```
 
----
-
-### 2. Get Notification By ID
+### 2. Get a Single Notification
 
 ```javascript
-db.notifications.findOne({
-  _id: "notif_101",
-});
+db.notifications.findOne({ _id: "notif_101" });
 ```
 
----
-
-### 3. Create Notification
+### 3. Create a Notification
 
 ```javascript
 db.notifications.insertOne({
@@ -333,78 +327,60 @@ db.notifications.insertOne({
   message: "Amazon shortlisted your profile",
   type: "placement",
   isRead: false,
-  createdAt: new Date(),
+  createdAt: new Date()
 });
 ```
 
----
-
-### 4. Mark Notification as Read
+### 4. Mark as Read
 
 ```javascript
 db.notifications.updateOne(
   { _id: "notif_101" },
-  {
-    $set: {
-      isRead: true,
-    },
-  },
+  { $set: { isRead: true } }
 );
 ```
 
----
-
-### 5. Delete Notification
+### 5. Delete a Notification
 
 ```javascript
-db.notifications.deleteOne({
-  _id: "notif_101",
-});
+db.notifications.deleteOne({ _id: "notif_101" });
 ```
 
 ---
 
-## Problems as Data Increases
+## Scaling Challenges
 
-As notification data increases, some issues may occur:
+As the notification collection grows into millions of records, a few challenges can arise:
 
-- slower query performance
-- larger collection size
-- increased read traffic
-- delay in fetching recent notifications
+- Query performance degrades without proper indexing
+- Collection size increases storage requirements
+- Read traffic spikes during peak usage (e.g., after results are published)
+- Fetching recent notifications becomes slower without sorted indexes
 
 ---
 
 ## Solutions
 
 ### 1. Indexing
-
-Indexes can improve filtering and sorting speed.
+Compound indexes on frequently filtered fields speed up both filtering and sorting operations.
 
 ### 2. Pagination
-
-Notifications can be loaded page by page.
-
-Example:
+Loading notifications in pages keeps response sizes manageable:
 
 ```http
 GET /api/v1/notifications?page=1&limit=20
 ```
 
 ### 3. Archiving Old Notifications
+Notifications older than a certain threshold can be moved to a separate archive collection, keeping the active collection lean and fast.
 
-Older notifications can be moved to archive collections.
-
-### 4. Caching
-
-Frequently accessed notifications can be cached using Redis.
+### 4. Caching with Redis
+Frequently accessed notifications (e.g., the most recent 20 for a user) can be cached in Redis, reducing repeated database hits significantly.
 
 ### 5. Sharding
-
-MongoDB sharding can distribute data across multiple servers for scalability.
+For very large deployments, MongoDB's built-in sharding can distribute data across multiple servers, allowing the system to scale horizontally.
 
 ---
-
 
 
 # Stage 3
