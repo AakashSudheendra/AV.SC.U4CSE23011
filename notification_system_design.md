@@ -386,3 +386,105 @@ Frequently accessed notifications can be cached using Redis.
 MongoDB sharding can distribute data across multiple servers for scalability.
 
 ---
+
+
+
+# Stage 3
+
+## Query Analysis
+
+```sql
+SELECT * FROM notifications
+WHERE studentID = 1042
+AND isRead = false
+ORDER BY createdAt DESC;
+```
+
+The query is correct because it fetches unread notifications for a particular student and sorts them by latest notifications first.
+
+However, the query may become slow when the table contains millions of records.
+
+---
+
+## Reasons for Slow Performance
+
+Possible reasons:
+
+- full table scan may happen
+- sorting large amounts of data is expensive
+- missing indexes on frequently searched fields
+- returning too many rows at once
+
+When the database grows to millions of notifications, query execution time increases significantly without proper indexing.
+
+---
+
+## Improvements
+
+A compound index can improve performance.
+
+```sql
+CREATE INDEX idx_notifications
+ON notifications(studentID, isRead, createdAt DESC);
+```
+
+This helps because:
+
+- studentID filtering becomes faster
+- unread notifications are filtered quickly
+- sorting by createdAt becomes optimized
+
+---
+
+## Computational Cost
+
+Without indexing:
+
+- time complexity can become approximately O(n)
+
+With proper indexing:
+
+- query performance improves significantly
+- database searches fewer rows
+- sorting cost is reduced
+
+---
+
+## Should We Add Indexes on Every Column?
+
+No, adding indexes on every column is not a good practice.
+
+Problems with too many indexes:
+
+- increased storage usage
+- slower insert and update operations
+- unnecessary maintenance overhead
+
+Indexes should only be created for:
+
+- frequently searched columns
+- filtering fields
+- sorting fields
+- JOIN conditions
+
+---
+
+## Query to Find Students Who Received Placement Notifications in Last 7 Days
+
+```sql
+SELECT DISTINCT studentID
+FROM notifications
+WHERE notificationType = 'Placement'
+AND createdAt >= NOW() - INTERVAL 7 DAY;
+```
+
+This query:
+
+- filters placement notifications
+- checks notifications from last 7 days
+- returns unique student IDs
+
+
+
+
+
