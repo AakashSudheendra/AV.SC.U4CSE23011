@@ -383,9 +383,12 @@ For very large deployments, MongoDB's built-in sharding can distribute data acro
 ---
 
 
-# Stage 3
 
-## Query Analysis
+
+
+# Stage 3 — Query Analysis & Optimisation
+
+## Query Under Review
 
 ```sql
 SELECT * FROM notifications
@@ -394,76 +397,63 @@ AND isRead = false
 ORDER BY createdAt DESC;
 ```
 
-The query is correct because it fetches unread notifications for a particular student and sorts them by latest notifications first.
+This query is logically correct — it retrieves unread notifications for a specific student and returns them in reverse chronological order, which is exactly what the frontend needs.
 
-However, the query may become slow when the table contains millions of records.
-
----
-
-## Reasons for Slow Performance
-
-Possible reasons:
-
-- full table scan may happen
-- sorting large amounts of data is expensive
-- missing indexes on frequently searched fields
-- returning too many rows at once
-
-When the database grows to millions of notifications, query execution time increases significantly without proper indexing.
+However, on a table with millions of rows, this query can become noticeably slow.
 
 ---
 
-## Improvements
+## Why It Slows Down
 
-A compound index can improve performance.
+- Without indexes, the database performs a **full table scan** to find matching rows
+- Sorting a large result set by `createdAt` is computationally expensive
+- Returning all matching rows without a limit can cause memory pressure
+- The problem gets worse as more students and notifications are added over time
+
+---
+
+## Optimisation: Compound Index
+
+A compound index across the three most relevant columns makes a significant difference:
 
 ```sql
 CREATE INDEX idx_notifications
 ON notifications(studentID, isRead, createdAt DESC);
 ```
 
-This helps because:
+This works well because:
 
-- studentID filtering becomes faster
-- unread notifications are filtered quickly
-- sorting by createdAt becomes optimized
-
----
-
-## Computational Cost
-
-Without indexing:
-
-- time complexity can become approximately O(n)
-
-With proper indexing:
-
-- query performance improves significantly
-- database searches fewer rows
-- sorting cost is reduced
+- **studentID** filtering narrows the dataset immediately
+- **isRead** filtering further reduces the result set to only unread entries
+- **createdAt DESC** sorting is handled by the index itself, avoiding a separate sort operation
 
 ---
 
-## Should We Add Indexes on Every Column?
+## Computational Cost Comparison
 
-No, adding indexes on every column is not a good practice.
-
-Problems with too many indexes:
-
-- increased storage usage
-- slower insert and update operations
-- unnecessary maintenance overhead
-
-Indexes should only be created for:
-
-- frequently searched columns
-- filtering fields
-- sorting fields
-- JOIN conditions
+| Scenario | Behaviour |
+|---|---|
+| Without indexing | Full table scan — approaches O(n) as rows increase |
+| With compound index | Index traversal — significantly fewer rows examined, sorting pre-optimised |
 
 ---
 
-## Query to Find Students Who Received Placement Notifications in Last 7 Days
+## Should Every Column Be Indexed?
+
+No. Over-indexing is a common mistake and introduces its own problems:
+
+- Every index consumes additional storage
+- Insert and update operations become slower because indexes must be maintained
+- Too many indexes add unnecessary maintenance overhead
+
+Indexes should only be added for columns that are:
+- Frequently used in `WHERE` filters
+- Used for sorting (`ORDER BY`)
+- Used in `JOIN` conditions
+
+---
+
+## Additional Query — Students with Recent Placement Notifications
 
 ```sql
 SELECT DISTINCT studentID
@@ -472,12 +462,7 @@ WHERE notificationType = 'Placement'
 AND createdAt >= NOW() - INTERVAL 7 DAY;
 ```
 
-This query:
-
-- filters placement notifications
-- checks notifications from last 7 days
-- returns unique student IDs
-
+This query identifies all students who received a placement-related notification in the last 7 days — useful for analytics, reporting, or triggering follow-up actions.
 
 ---
 
