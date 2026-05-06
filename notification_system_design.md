@@ -586,3 +586,117 @@ A combination of:
 would provide better scalability and improved user experience for the notification platform.
 
 
+---
+
+# Stage 5
+
+## Problems in Current Implementation
+
+```python
+function notify_all(student_ids: array, message: string):
+
+    for student_id in student_ids:
+
+        send_email(student_id, message)
+
+        save_to_db(student_id, message)
+
+        push_to_app(student_id, message)
+```
+
+The current implementation has multiple issues when sending notifications to 50,000 students.
+
+### Shortcomings
+
+- operations are executed sequentially
+- sending emails one by one is slow
+- if email sending fails midway, processing becomes inconsistent
+- database operations and email operations are tightly coupled
+- a single failure can interrupt the entire process
+- high response time for large batches
+
+---
+
+## What Happens if Email Fails for 200 Students?
+
+If email sending fails midway:
+- some students receive notifications
+- some students do not receive emails
+- database may already contain partial records
+- system becomes inconsistent
+
+Retry handling becomes difficult in this approach.
+
+---
+
+## Better Design
+
+A queue-based asynchronous architecture can improve scalability and reliability.
+
+### Suggested Flow
+
+1. save notifications to database
+2. push jobs into a message queue
+3. background workers process emails separately
+4. failed jobs can be retried safely
+
+Technologies such as RabbitMQ, Kafka, or BullMQ can be used.
+
+---
+
+## Should DB Save and Email Sending Happen Together?
+
+No, both operations should be separated.
+
+Reason:
+- database storage is critical
+- email sending is an external service
+- email APIs can fail or become slow
+- notification records should still be stored even if email delivery fails
+
+This improves reliability and fault tolerance.
+
+---
+
+## Revised Pseudocode
+
+```python
+function notify_all(student_ids: array, message: string):
+
+    for student_id in student_ids:
+
+        save_to_db(student_id, message)
+
+        add_to_queue({
+            student_id,
+            message
+        })
+
+
+worker_process():
+
+    while queue_not_empty():
+
+        job = get_next_job()
+
+        try:
+
+            send_email(job.student_id, job.message)
+
+            push_to_app(job.student_id, job.message)
+
+        except:
+
+            retry_job(job)
+```
+
+---
+
+## Advantages of This Design
+
+- faster processing
+- scalable for large users
+- failure handling becomes easier
+- retries are supported
+- reduced API response time
+- improved reliability
