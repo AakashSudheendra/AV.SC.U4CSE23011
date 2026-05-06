@@ -466,104 +466,100 @@ This query identifies all students who received a placement-related notification
 
 ---
 
-# Stage 4
+# Stage 4 — Performance Optimisation
 
-When notifications are fetched on every page load for every student, the database receives a very large number of repeated requests. As the number of users increases, this can overload the DB and reduce performance.
+## The Problem
 
-To improve performance and reduce database load, multiple optimizations can be used.
+When notifications are fetched on every page load for every student, the database receives a large volume of repeated read requests. As the user base scales, this puts increasing pressure on the database and degrades overall performance.
+
+A combination of strategies can be applied to reduce this load and improve response times.
 
 ---
 
 ## 1. Pagination
 
-Instead of loading all notifications at once, notifications can be fetched in smaller batches.
-
-Example:
+Rather than loading all notifications at once, fetch them in small, manageable batches.
 
 ```http
 GET /api/v1/notifications?page=1&limit=20
 ```
 
-### Advantages
-- reduces response size
-- reduces DB load
-- faster API responses
+**Benefits:**
+- Smaller response payloads
+- Reduced database load per request
+- Faster API responses for the user
 
-### Tradeoff
-- frontend needs pagination handling
-
----
-
-## 2. Caching
-
-Frequently accessed notifications can be cached using Redis.
-
-Instead of querying the database repeatedly, recent notifications can be served directly from cache.
-
-### Advantages
-- very fast response time
-- reduces repeated DB queries
-- improves scalability
-
-### Tradeoff
-- cache invalidation must be handled properly
-- extra memory usage
+**Trade-off:**
+- The frontend needs to implement pagination controls or infinite scroll
 
 ---
 
-## 3. Real-Time Notifications
+## 2. Caching with Redis
 
-Instead of fetching notifications repeatedly using API polling, WebSockets can be used for real-time updates.
+Store recently fetched notifications in Redis so that repeat requests are served from cache instead of hitting the database.
 
-The server pushes new notifications directly to connected users.
+**Benefits:**
+- Near-instant response times for cached data
+- Dramatically reduces repeated database queries
+- Improves scalability as user count grows
 
-### Advantages
-- reduces unnecessary API calls
-- real-time user experience
-- lower database traffic
+**Trade-off:**
+- Cache invalidation must be handled carefully — stale data can cause inconsistencies
+- Requires additional infrastructure (Redis server) and memory allocation
 
-### Tradeoff
-- more complex connection management
-- persistent socket connections required
+---
+
+## 3. WebSockets for Real-Time Updates
+
+Instead of repeatedly polling the API for new notifications, the server pushes updates directly to connected clients using WebSockets.
+
+**Benefits:**
+- Eliminates unnecessary API calls between updates
+- Users receive notifications the moment they are created
+- Reduces overall database read traffic
+
+**Trade-off:**
+- Connection management is more complex than simple REST polling
+- Persistent socket connections must be maintained per connected user
 
 ---
 
 ## 4. Database Indexing
 
-Indexes on commonly filtered fields such as userId, isRead, and createdAt can improve query speed.
+Adding indexes on commonly queried fields such as `userId`, `isRead`, and `createdAt` ensures queries run efficiently even as the table grows.
 
-### Advantages
-- faster searching and sorting
+**Benefits:**
+- Faster search and sort operations
 
-### Tradeoff
-- slightly slower insert/update operations
-- additional storage required
+**Trade-off:**
+- Slightly slower write operations (inserts/updates must update indexes)
+- Increases storage usage
 
 ---
 
 ## 5. Archiving Old Notifications
 
-Old notifications can be moved to archive collections or tables.
+Notifications beyond a certain age (e.g., 90 days) can be moved to a separate archive collection or table.
 
-### Advantages
-- reduces active database size
-- improves performance for recent data
+**Benefits:**
+- Keeps the active collection small and fast
+- Improves performance for the most recent, frequently accessed data
 
-### Tradeoff
-- archived data retrieval becomes slower
+**Trade-off:**
+- Archived data retrieval requires querying a secondary store, which may be slower
 
 ---
 
 ## Recommended Approach
 
-A combination of:
-- pagination
-- Redis caching
-- WebSockets
-- proper indexing
+The most effective strategy combines multiple techniques together:
 
-would provide better scalability and improved user experience for the notification platform.
+- **Pagination** to control response size
+- **Redis caching** to reduce database load for frequent reads
+- **WebSockets** to eliminate polling and deliver updates in real time
+- **Proper indexing** to keep database queries fast at scale
 
+No single solution solves everything — using them in combination gives the best overall performance and reliability.
 
 ---
 
